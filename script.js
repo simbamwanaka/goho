@@ -146,3 +146,115 @@ $('checkoutBtn') && $('checkoutBtn').addEventListener('click', () => {
 // Initial render
 renderProducts();
 updateCartCount();
+
+// --- Gallery Lightbox and Interactivity ---
+const galleryImgs = Array.from(document.querySelectorAll('#galleryGrid .gallery-img'));
+const lightbox = document.getElementById('lightbox');
+const lbImg = lightbox && lightbox.querySelector('.lightbox-img');
+const lbCaption = lightbox && lightbox.querySelector('.lightbox-caption');
+const btnClose = lightbox && lightbox.querySelector('.lightbox-close');
+const btnPrev = lightbox && lightbox.querySelector('.lightbox-prev');
+const btnNext = lightbox && lightbox.querySelector('.lightbox-next');
+const btnPlay = lightbox && lightbox.querySelector('.lightbox-play');
+const btnDownload = lightbox && lightbox.querySelector('.lightbox-download');
+const btnFullscreen = lightbox && lightbox.querySelector('.lightbox-fullscreen');
+
+let currentIndex = 0;
+let slideInterval = null;
+
+function openLightbox(index){
+  if(!lightbox) return;
+  currentIndex = index;
+  const img = galleryImgs[currentIndex];
+  lbImg.src = img.src;
+  lbImg.alt = img.alt || '';
+  lbCaption.textContent = img.dataset.caption || img.alt || '';
+  lightbox.classList.remove('d-none');
+  lightbox.setAttribute('aria-hidden','false');
+  document.body.style.overflow = 'hidden';
+  btnPlay.textContent = '▶';
+}
+
+function closeLightbox(){
+  if(!lightbox) return;
+  lightbox.classList.add('d-none');
+  lightbox.setAttribute('aria-hidden','true');
+  document.body.style.overflow = '';
+  stopSlideshow();
+}
+
+function showIndex(i){
+  currentIndex = (i + galleryImgs.length) % galleryImgs.length;
+  const img = galleryImgs[currentIndex];
+  lbImg.src = img.src;
+  lbImg.alt = img.alt || '';
+  lbCaption.textContent = img.dataset.caption || img.alt || '';
+}
+
+function next(){ showIndex(currentIndex + 1); }
+function prev(){ showIndex(currentIndex - 1); }
+
+function startSlideshow(){
+  if(slideInterval) return;
+  btnPlay.textContent = '⏸';
+  slideInterval = setInterval(next, 3000);
+}
+function stopSlideshow(){
+  btnPlay.textContent = '▶';
+  clearInterval(slideInterval); slideInterval = null;
+}
+
+function toggleSlideshow(){ if(slideInterval) stopSlideshow(); else startSlideshow(); }
+
+function downloadCurrent(){
+  const url = lbImg.src;
+  const a = document.createElement('a');
+  a.href = url; a.download = `image-${currentIndex+1}.jpg`; document.body.appendChild(a); a.click(); a.remove();
+}
+
+function toggleFullscreen(){
+  const el = lightbox.querySelector('.lightbox-content');
+  if(!document.fullscreenElement){ el.requestFullscreen?.(); }
+  else { document.exitFullscreen?.(); }
+}
+
+// Attach listeners to thumbnails
+galleryImgs.forEach((img, idx) => {
+  img.style.cursor = 'zoom-in';
+  img.addEventListener('click', () => openLightbox(idx));
+  img.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') openLightbox(idx); });
+  // make focusable for keyboard users
+  img.setAttribute('tabindex','0');
+});
+
+// Lightbox controls
+btnClose && btnClose.addEventListener('click', closeLightbox);
+btnPrev && btnPrev.addEventListener('click', prev);
+btnNext && btnNext.addEventListener('click', next);
+btnPlay && btnPlay.addEventListener('click', toggleSlideshow);
+btnDownload && btnDownload.addEventListener('click', downloadCurrent);
+btnFullscreen && btnFullscreen.addEventListener('click', toggleFullscreen);
+
+// close when clicking backdrop
+lightbox && lightbox.addEventListener('click', e => {
+  if(e.target.classList.contains('lightbox-backdrop')) closeLightbox();
+});
+
+// keyboard navigation
+document.addEventListener('keydown', e => {
+  if(!lightbox || lightbox.classList.contains('d-none')) return;
+  if(e.key === 'Escape') closeLightbox();
+  if(e.key === 'ArrowRight') next();
+  if(e.key === 'ArrowLeft') prev();
+  if(e.key === ' ') { e.preventDefault(); toggleSlideshow(); }
+});
+
+// Improve accessibility: trap focus inside lightbox when open
+document.addEventListener('focusin', e => {
+  if(!lightbox || lightbox.classList.contains('d-none')) return;
+  if(!lightbox.contains(e.target)) {
+    e.stopPropagation();
+    btnClose && btnClose.focus();
+  }
+});
+
