@@ -148,6 +148,36 @@ renderProducts();
 updateCartCount();
 
 // --- Gallery Lightbox and Interactivity ---
+// Fetch and render gallery images from API
+async function loadGalleryImages() {
+  try {
+    const response = await fetch('/api/gallery');
+    if (!response.ok) throw new Error('Failed to load gallery');
+    const items = await response.json();
+    
+    const grid = document.getElementById('galleryGrid');
+    grid.innerHTML = '';
+    
+    items.forEach((item, idx) => {
+      const col = document.createElement('div');
+      col.className = 'col-6 col-md-4 col-lg-3';
+      col.innerHTML = `
+        <div class="card gallery-card h-100 border-0 shadow-sm">
+          <img loading="lazy" data-index="${idx}" data-caption="${item.caption}" 
+               src="${item.src}" class="card-img-top gallery-img" 
+               alt="${item.caption}">
+        </div>
+      `;
+      grid.appendChild(col);
+    });
+  } catch (err) {
+    console.error('Gallery load error:', err);
+  }
+}
+
+// Initial gallery load
+loadGalleryImages();
+
 const galleryImgs = Array.from(document.querySelectorAll('#galleryGrid .gallery-img'));
 const lightbox = document.getElementById('lightbox');
 const lbImg = lightbox && lightbox.querySelector('.lightbox-img');
