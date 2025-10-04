@@ -46,4 +46,7 @@ router.get('/api/gallery', requireAdmin, async (req, res) => {
     }
 });
 
-module.exports = { router, requireAdmin };
+module.exports = {
+    router,
+    requireAdmin
+};

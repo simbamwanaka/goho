@@ -2,7 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
-const { requireAdmin } = require('./admin');
+const admin = require('./admin');
+const requireAdmin = admin.requireAdmin;
+const uploadMiddleware = require('../middleware/upload');
+const upload = uploadMiddleware.upload;
 
 // Get all products
 router.get('/', async (req, res) => {
@@ -38,7 +41,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 });
 
 // Upload product image
-router.post('/upload', requireAdmin, async (req, res) => {
+router.post('/upload', requireAdmin, upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             console.warn('Product upload: no file in request');

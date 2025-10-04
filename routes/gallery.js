@@ -4,7 +4,11 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs');
 const db = require('../db');
-const { requireAdmin } = require('./admin');
+const admin = require('./admin');
+const requireAdmin = admin.requireAdmin;
+const uploadMiddleware = require('../middleware/upload');
+const upload = uploadMiddleware.upload;
+const imagesDir = uploadMiddleware.imagesDir;
 
 // Get all gallery items
 router.get('/', async (req, res) => {
@@ -16,20 +20,8 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Add gallery item
-router.post('/', requireAdmin, async (req, res) => {
-    try {
-        const { src, caption } = req.body;
-        const item = { id: uuidv4(), src, caption };
-        await db.gallery.add(item);
-        res.status(201).json(item);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to create gallery item' });
-    }
-});
-
 // Upload gallery image
-router.post('/upload', requireAdmin, async (req, res) => {
+router.post('/upload', requireAdmin, upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -60,7 +52,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
         try {
             // Delete the image file if it exists
             if (item.src) {
-                const imagePath = path.join(process.env.NODE_ENV === 'production' ? '/tmp/images' : 'images', path.basename(item.src));
+                const imagePath = path.join(imagesDir, path.basename(item.src));
                 if (fs.existsSync(imagePath)) {
                     fs.unlinkSync(imagePath);
                 }
