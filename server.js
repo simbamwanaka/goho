@@ -11,9 +11,22 @@ const db = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for secure cookies in production
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(session({ secret: process.env.SESSION_SECRET || 'dev-secret', resave: false, saveUninitialized: true }));
+app.use(session({ 
+    secret: process.env.SESSION_SECRET || 'dev-secret', 
+    resave: false, 
+    saveUninitialized: true,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+    }
+}));
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
