@@ -65,9 +65,18 @@ app.use((req, res, next) => {
 });
 
 // Setup upload directories
-const imagesDir = path.join(__dirname, 'images');
+const imagesDir = process.env.NODE_ENV === 'production' 
+    ? path.join('/tmp', 'images') 
+    : path.join(__dirname, 'images');
+
+// Ensure the images directory exists
 if (!fs.existsSync(imagesDir)) {
-    fs.mkdirSync(imagesDir);
+    fs.mkdirSync(imagesDir, { recursive: true });
+}
+
+// In production, we'll need to recreate the directory on startup
+if (process.env.NODE_ENV === 'production') {
+    console.log('Running in production mode, using temporary directory:', imagesDir);
 }
 
 // Admin users (keep in memory for now)
