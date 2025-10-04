@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ivhu
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/images
+      sizeGB: 1
