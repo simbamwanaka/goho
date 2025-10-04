@@ -86,163 +86,23 @@ const users = [{ id: 'admin', username: 'admin', password: process.env.ADMIN_PAS
 app.use('/images', express.static(imagesDir));
 app.use(express.static(path.join(__dirname)));
 
-// API: products
-app.get('/api/products', async (req, res) => {
-    try {
-        const products = await db.products.getAll();
-        res.json(products);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch products' });
-    }
-});
+// Import routes
+const adminRoutes = require('./routes/admin');
+const productRoutes = require('./routes/products');
+const galleryRoutes = require('./routes/gallery');
 
-app.post('/api/products', async (req, res) => {
-    try {
-        const { name, category, price, unit, img } = req.body;
-        const product = { id: uuidv4(), name, category, price: Number(price), unit, img };
-        await db.products.add(product);
-        res.status(201).json(product);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to create product' });
-    }
-});
+// Apply multer middleware to route handlers
+const productUpload = upload.single('image');
+const galleryUpload = upload.single('image');
 
-app.delete('/api/products/:id', requireAdmin, async (req, res) => {
-    try {
-        const { id } = req.params;
-        await db.products.delete(id);
-        res.status(204).end();
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to delete product' });
-    }
-});
+// Use routes
+app.use('/admin', adminRoutes.router);
+app.use('/api/products', productRoutes);
+app.use('/api/gallery', galleryRoutes);
 
-// API: gallery
-app.get('/api/gallery', async (req, res) => {
-    try {
-        const items = await db.gallery.getAll();
-        res.json(items);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch gallery' });
-    }
-});
-
-app.post('/api/gallery', async (req, res) => {
-    try {
-        const { src, caption } = req.body;
-        const item = { id: uuidv4(), src, caption };
-        await db.gallery.add(item);
-        res.status(201).json(item);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to create gallery item' });
-    }
-});
-
-app.post('/api/gallery/upload', upload.single('image'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-        const src = `/images/${req.file.filename}`;
-        const item = { id: uuidv4(), src, caption: req.body.caption || '' };
-        await db.gallery.add(item);
-        res.status(201).json(item);
-    } catch (err) {
-        console.error('Gallery upload error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// Upload endpoint for product images
-app.post('/api/products/upload', upload.single('image'), (req, res) => {
-    try {
-        if (!req.file) {
-            console.warn('Product upload: no file in request');
-            return res.status(400).json({ error: 'No file uploaded' });
-        }
-        console.log('Product image uploaded:', req.file.filename);
-        const src = `/images/${req.file.filename}`;
-        res.json({ src });
-    } catch (err) {
-        console.error('Product upload error:', err);
-        res.status(500).json({ error: 'Upload failed', detail: err.message });
-    }
-});
-
-app.delete('/api/gallery/:id', requireAdmin, async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        // First, get the item details
-        const items = await db.gallery.getAll();
-        const item = items.find(g => g.id === id);
-        
-        if (!item) {
-            return res.status(404).json({ error: 'Gallery item not found' });
-        }
-
-        try {
-            // Delete the image file if it exists
-            if (item.src) {
-                const imagePath = path.join(imagesDir, path.basename(item.src));
-                if (fs.existsSync(imagePath)) {
-                    fs.unlinkSync(imagePath);
-                }
-            }
-        } catch (fileErr) {
-            console.error('Error deleting image file:', fileErr);
-            // Continue with database deletion even if file deletion fails
-        }
-
-        // Delete from database
-        await db.gallery.delete(id);
-        res.status(204).end();
-    } catch (err) {
-        console.error('Gallery deletion error:', err);
-        res.status(500).json({ error: 'Failed to delete gallery item', details: err.message });
-    }
-});
-
-// Admin auth
-app.post('/admin/login', (req, res) => {
-    const { username, password } = req.body;
-    const user = users.find(u => u.username === username && u.password === password);
-    if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    req.session.user = { id: user.id, username: user.username };
-    res.json({ ok: true });
-});
-
-app.post('/admin/logout', (req, res) => {
-    req.session.destroy(() => res.json({ ok: true }));
-});
-
-function requireAdmin(req, res, next) {
-    if (req.session && req.session.user) {
-        return next();
-    }
-    res.status(401).json({ error: 'Unauthorized' });
-}
-
-// Admin APIs to manage products and gallery (protected)
-app.get('/admin/api/products', requireAdmin, async (req, res) => {
-    try {
-        const products = await db.products.getAll();
-        res.json(products);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch products' });
-    }
-});
-
-app.get('/admin/api/gallery', requireAdmin, async (req, res) => {
-    try {
-        const items = await db.gallery.getAll();
-        res.json(items);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch gallery' });
-    }
-});
+// Add multer middleware to specific routes
+app.use('/api/products/upload', productUpload);
+app.use('/api/gallery/upload', galleryUpload);
 
 // Serve admin UI
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
